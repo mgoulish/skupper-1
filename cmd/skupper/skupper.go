@@ -70,18 +70,6 @@ func expose(cli *client.VanClient, ctx context.Context, targetType string, targe
 	return cli.ServiceInterfaceBind(ctx, service, targetType, targetName, options.Protocol, options.TargetPort)
 }
 
-func requiredArg(name string) func(*cobra.Command, []string) error {
-	return func(cmd *cobra.Command, args []string) error {
-		if len(args) < 1 {
-			return fmt.Errorf("%s must be specified", name)
-		}
-		if len(args) > 1 {
-			return fmt.Errorf("illegal argument: %s", args[1])
-		}
-		return nil
-	}
-}
-
 func stringSliceContains(s []string, e string) bool {
 	for _, a := range s {
 		if a == e {
@@ -228,7 +216,7 @@ func init() {
 	var cmdConnectionToken = &cobra.Command{
 		Use:   "connection-token <output-file>",
 		Short: "Create a connection token.  The 'connect' command uses the token to establish a connection from a remote Skupper site.",
-		Args:  requiredArg("output-file"),
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			cli := NewClient(namespace, kubeContext, kubeconfig)
 			err := cli.ConnectorTokenCreateFile(context.Background(), clientIdentity, args[0])
@@ -244,7 +232,7 @@ func init() {
 	var cmdConnect = &cobra.Command{
 		Use:   "connect <connection-token-file>",
 		Short: "Connect this skupper installation to that which issued the specified connectionToken",
-		Args:  requiredArg("connection-token"),
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			cli := NewClient(namespace, kubeContext, kubeconfig)
 			siteConfig, err := cli.SiteConfigInspect(context.Background(), nil)
@@ -299,7 +287,7 @@ func init() {
 	var cmdDisconnect = &cobra.Command{
 		Use:   "disconnect <name>",
 		Short: "Remove specified connection",
-		Args:  requiredArg("connection name"),
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			cli := NewClient(namespace, kubeContext, kubeconfig)
 			connectorRemoveOpts.Name = args[0]
@@ -346,7 +334,7 @@ func init() {
 	var cmdCheckConnection = &cobra.Command{
 		Use:   "check-connection all|<connection-name>",
 		Short: "Check whether a connection to another Skupper site is active",
-		Args:  requiredArg("connection name"),
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			cli := NewClient(namespace, kubeContext, kubeconfig)
 			var connectors []*types.ConnectorInspectResponse
@@ -621,7 +609,7 @@ func init() {
 	var cmdDeleteService = &cobra.Command{
 		Use:   "delete <name>",
 		Short: "Delete a skupper service",
-		Args:  requiredArg("service-name"),
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			cli := NewClient(namespace, kubeContext, kubeconfig)
 			err := cli.ServiceInterfaceRemove(context.Background(), args[0])

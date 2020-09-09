@@ -6,18 +6,6 @@ import (
 	"gotest.tools/assert"
 )
 
-func Test_requiredArg(t *testing.T) {
-	r := func(args []string) error {
-		return requiredArg("testArg")(nil, args)
-	}
-
-	assert.Error(t, r([]string{}), "testArg must be specified")
-	assert.Error(t, r([]string{"too", "many"}), "illegal argument: many")
-	assert.Error(t, r([]string{"too", "many", "more"}), "illegal argument: many")
-
-	assert.Assert(t, r([]string{"OneArgument"}))
-}
-
 func Test_bindArgs(t *testing.T) {
 	genericError := "Service name, target type and target name must all be specified (e.g. 'skupper bind <service-name> <target-type> <target-name>')"
 	b := func(args []string) error {
