@@ -19,11 +19,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-type Test struct {
-	namespaces []string
-}
-
-// var fp = fmt.Fprintf
+var fp = fmt.Fprintf
 
 func TestConnectorCreateError(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -142,39 +138,8 @@ func TestConnectorCreateInterior(t *testing.T) {
 	informers.Start(ctx.Done())
 	cache.WaitForCacheSync(ctx.Done(), secretsInformer.HasSynced)
 
-	// Configure the Token Creator site and create its router.
-	routerCreateOpts := types.SiteConfigSpec{
-		SkupperName:       "skupper",
-		IsEdge:            false,
-		EnableController:  true,
-		EnableServiceSync: true,
-		EnableConsole:     false,
-		AuthMode:          "",
-		User:              "",
-		Password:          "",
-		ClusterLocal:      true,
-	}
-	siteConfig, err := tokenCreatorClient.SiteConfigCreate(context.Background(), routerCreateOpts)
-	assert.Assert(t, err, "Unable to configure tokenCreator site")
-	err = tokenCreatorClient.RouterCreate(ctx, *siteConfig)
-	assert.Assert(t, err, "Unable to create tokenCreator VAN router")
-
-	// Configure the Token User site and create its router.
-	routerCreateOpts = types.SiteConfigSpec{
-		SkupperName:       "skupper",
-		IsEdge:            false,
-		EnableController:  true,
-		EnableServiceSync: true,
-		EnableConsole:     false,
-		AuthMode:          "",
-		User:              "",
-		Password:          "",
-		ClusterLocal:      true,
-	}
-	siteConfig, err = tokenUserClient.SiteConfigCreate(context.Background(), routerCreateOpts)
-	assert.Assert(t, err, "Unable to configure tokenUser site")
-	err = tokenUserClient.RouterCreate(ctx, *siteConfig)
-	assert.Assert(t, err, "Unable to create tokenUser VAN router")
+	configureSiteAndCreateRouter(t, ctx, tokenCreatorClient, "tokenCreator")
+	configureSiteAndCreateRouter(t, ctx, tokenUserClient, "tokenUser")
 
 	for _, c := range testcases {
 		ctx, cancel := context.WithCancel(ctx)
@@ -237,26 +202,10 @@ func TestSelfConnect(t *testing.T) {
 	assert.Check(t, err, publicNamespace)
 	defer kube.DeleteNamespace(publicNamespace, publicClient.KubeClient)
 
-	// Configure the site.
-	// It needs to be done this way -- by calling SiteConfigCreate() --
+	// Configuring the site needs to be done by calling SiteConfigCreate()
 	// when using a real cluster, because that function has a side-effect
 	// of creating the config map with the K8S API.
-	routerCreateOpts := types.SiteConfigSpec{
-		SkupperName:       publicNamespace,
-		IsEdge:            false,
-		EnableController:  true,
-		EnableServiceSync: true,
-		EnableConsole:     false,
-		AuthMode:          "",
-		User:              "",
-		Password:          "",
-		ClusterLocal:      true,
-	}
-	siteConfig, err := publicClient.SiteConfigCreate(context.Background(), routerCreateOpts)
-
-	// Create Public Router: interior. ----------------------
-	err = publicClient.RouterCreate(ctx, *siteConfig)
-	assert.Check(t, err, "Unable to create public router")
+	configureSiteAndCreateRouter(t, ctx, publicClient, "public")
 
 	// Here's where we will put the connection token.
 	testPath := "./tmp/"
@@ -277,4 +226,22 @@ func TestSelfConnect(t *testing.T) {
 		Cost:             1,
 	})
 	assert.Assert(t, err != nil, "Self-connection should fail.")
+}
+
+func configureSiteAndCreateRouter(t *testing.T, ctx context.Context, cli *VanClient, name string) {
+	routerCreateOpts := types.SiteConfigSpec{
+		SkupperName:       "skupper",
+		IsEdge:            false,
+		EnableController:  true,
+		EnableServiceSync: true,
+		EnableConsole:     false,
+		AuthMode:          "",
+		User:              "",
+		Password:          "",
+		ClusterLocal:      true,
+	}
+	siteConfig, err := cli.SiteConfigCreate(context.Background(), routerCreateOpts)
+	assert.Assert(t, err, "Unable to configure %s site", name)
+	err = cli.RouterCreate(ctx, *siteConfig)
+	assert.Assert(t, err, "Unable to create %s VAN router", name)
 }
