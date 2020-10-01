@@ -96,32 +96,15 @@ func TestConnectorCreateInterior(t *testing.T) {
 		},
 	}
 
-	testPath := "./tmp/"
-	os.Mkdir(testPath, 0755)
-	defer os.RemoveAll(testPath)
-
-	var tokenCreatorNamespace string = "van-connector-create-interior"
-	var tokenUserNamespace string = "van-connector-create-edge"
-
-	var tokenCreatorClient, tokenUserClient *VanClient
-	var err error
-	if *clusterRun {
-		tokenCreatorClient, err = NewClient(tokenCreatorNamespace, "", "")
-		tokenUserClient, err = NewClient(tokenUserNamespace, "", "")
-	} else {
-		tokenCreatorClient, err = newMockClient(tokenCreatorNamespace, "", "")
-		tokenUserClient, err = newMockClient(tokenUserNamespace, "", "")
-	}
-	assert.Assert(t, err)
-
-	_, err = kube.NewNamespace(tokenCreatorNamespace, tokenCreatorClient.KubeClient)
-	defer kube.DeleteNamespace(tokenCreatorNamespace, tokenCreatorClient.KubeClient)
-
-	_, err = kube.NewNamespace(tokenUserNamespace, tokenUserClient.KubeClient)
-	defer kube.DeleteNamespace(tokenUserNamespace, tokenUserClient.KubeClient)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	// Create and set up the two namespaces that we will be using.
+	tokenCreatorNamespace := "van-connector-create-interior"
+	tokenUserNamespace := "van-connector-create-edge"
+	tokenCreatorClient, tokenUserClient := setupTwoNamespaces(t, ctx, tokenCreatorNamespace, tokenUserNamespace)
+	defer kube.DeleteNamespace(tokenCreatorNamespace, tokenCreatorClient.KubeClient)
+	defer kube.DeleteNamespace(tokenUserNamespace, tokenUserClient.KubeClient)
 
 	secretsFound := []string{}
 	informers := informers.NewSharedInformerFactory(tokenCreatorClient.KubeClient, 0)
@@ -138,14 +121,15 @@ func TestConnectorCreateInterior(t *testing.T) {
 	informers.Start(ctx.Done())
 	cache.WaitForCacheSync(ctx.Done(), secretsInformer.HasSynced)
 
-	configureSiteAndCreateRouter(t, ctx, tokenCreatorClient, "tokenCreator")
-	configureSiteAndCreateRouter(t, ctx, tokenUserClient, "tokenUser")
+	testPath := "./tmp/"
+	os.Mkdir(testPath, 0755)
+	defer os.RemoveAll(testPath)
 
 	for _, c := range testcases {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		err = tokenCreatorClient.ConnectorTokenCreateFile(ctx, c.connName, testPath+c.connName+".yaml")
+		err := tokenCreatorClient.ConnectorTokenCreateFile(ctx, c.connName, testPath+c.connName+".yaml")
 		assert.Assert(t, err, "Unable to create token")
 
 		_, err = tokenUserClient.ConnectorCreateFromFile(ctx, testPath+c.connName+".yaml", types.ConnectorCreateOptions{
@@ -226,6 +210,28 @@ func TestSelfConnect(t *testing.T) {
 		Cost:             1,
 	})
 	assert.Assert(t, err != nil, "Self-connection should fail.")
+}
+
+func setupTwoNamespaces(t *testing.T, ctx context.Context, tokenCreatorNamespace, tokenUserNamespace string) (tokenCreatorClient, tokenUserClient *VanClient) {
+	var err error
+	if *clusterRun {
+		tokenCreatorClient, err = NewClient(tokenCreatorNamespace, "", "")
+		tokenUserClient, err = NewClient(tokenUserNamespace, "", "")
+	} else {
+		tokenCreatorClient, err = newMockClient(tokenCreatorNamespace, "", "")
+		tokenUserClient, err = newMockClient(tokenUserNamespace, "", "")
+	}
+	assert.Assert(t, err)
+
+	_, err = kube.NewNamespace(tokenCreatorNamespace, tokenCreatorClient.KubeClient)
+	assert.Assert(t, err)
+	_, err = kube.NewNamespace(tokenUserNamespace, tokenUserClient.KubeClient)
+	assert.Assert(t, err)
+
+	configureSiteAndCreateRouter(t, ctx, tokenCreatorClient, "tokenCreator")
+	configureSiteAndCreateRouter(t, ctx, tokenUserClient, "tokenUser")
+
+	return tokenCreatorClient, tokenUserClient
 }
 
 func configureSiteAndCreateRouter(t *testing.T, ctx context.Context, cli *VanClient, name string) {
