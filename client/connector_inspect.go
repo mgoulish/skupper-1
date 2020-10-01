@@ -7,10 +7,7 @@ import (
 
 	"github.com/skupperproject/skupper/api/types"
 	"github.com/skupperproject/skupper/pkg/qdr"
-
-        "os"
 )
-
 
 // ConnectorInspect VAN connector instance
 func (cli *VanClient) ConnectorInspect(ctx context.Context, name string) (*types.ConnectorInspectResponse, error) {
@@ -18,14 +15,12 @@ func (cli *VanClient) ConnectorInspect(ctx context.Context, name string) (*types
 
 	current, err := cli.KubeClient.AppsV1().Deployments(cli.Namespace).Get(types.TransportDeploymentName, metav1.GetOptions{})
 	if err != nil {
-                fp ( os.Stdout, "MDEBUG fail 1\n")
 		return nil, err
 	}
 
 	mode := qdr.GetTransportMode(current)
 	secret, err := cli.KubeClient.CoreV1().Secrets(cli.Namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
-                fp ( os.Stdout, "MDEBUG fail 2: name |%s|\n", name)
 		return nil, err
 	}
 

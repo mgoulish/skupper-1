@@ -37,8 +37,8 @@ func TestConnectorListInterior(t *testing.T) {
 	defer os.RemoveAll(testPath)
 
 	// Create and set up the two namespaces that we will be using.
-	tokenCreatorNamespace := "van-connector-create-interior"
-	tokenUserNamespace := "van-connector-create-edge"
+	tokenCreatorNamespace := "van-connector-list-interior"
+	tokenUserNamespace := "van-connector-list-edge"
 	tokenCreatorClient, tokenUserClient := setupTwoNamespaces(t, ctx, tokenCreatorNamespace, tokenUserNamespace)
 	defer kube.DeleteNamespace(tokenCreatorNamespace, tokenCreatorClient.KubeClient)
 	defer kube.DeleteNamespace(tokenUserNamespace, tokenUserClient.KubeClient)
