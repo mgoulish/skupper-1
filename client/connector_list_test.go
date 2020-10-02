@@ -17,20 +17,7 @@ func TestConnectorListInterior(t *testing.T) {
 	defer cancel()
 
 	connNames := []string{"conn1", "conn2", "conn3"}
-
-	var namespace string = "van-connector-list-interior"
-
-	var cli *VanClient
 	var err error
-	if *clusterRun {
-		cli, err = NewClient(namespace, "", "")
-	} else {
-		cli, err = newMockClient(namespace, "", "")
-	}
-	assert.Assert(t, err)
-
-	_, err = kube.NewNamespace(namespace, cli.KubeClient)
-	defer kube.DeleteNamespace(namespace, cli.KubeClient)
 
 	testPath := "./tmp/"
 	os.Mkdir(testPath, 0755)
