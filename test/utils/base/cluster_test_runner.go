@@ -3,6 +3,7 @@ package base
 import (
 	"context"
 	"fmt"
+        "os"
 	"testing"
 
 	"github.com/prometheus/common/log"
@@ -10,6 +11,10 @@ import (
 	vanClient "github.com/skupperproject/skupper/client"
 	"gotest.tools/assert"
 )
+
+
+var fp=fmt.Fprintf
+
 
 // ClusterNeeds enable customization of expected number of
 // public or private clusters in order to use multiple
@@ -51,6 +56,7 @@ var _ ClusterTestRunner = &ClusterTestRunnerBase{}
 
 func (c *ClusterTestRunnerBase) BuildOrSkip(t *testing.T, needs ClusterNeeds, vanClientProvider VanClientProvider) []*ClusterContext {
 
+        fp ( os.Stdout, "MDEBUG BuildOrSkip.\n" )
 	// Initializing internal properties
 	c.vanClientProvider = vanClientProvider
 	c.ClusterContexts = []*ClusterContext{}
@@ -84,6 +90,7 @@ func (c *ClusterTestRunnerBase) BuildOrSkip(t *testing.T, needs ClusterNeeds, va
 	c.createClusterContexts(t, needs)
 
 	// Return the ClusterContext slice
+        fp ( os.Stdout, "MDEBUG BuildOrSkip returns %d contexts.\n", len ( c.ClusterContexts ) )
 	return c.ClusterContexts
 }
 
@@ -108,11 +115,13 @@ func (c *ClusterTestRunnerBase) GetContext(private bool, id int) (*ClusterContex
 }
 
 func (c *ClusterTestRunnerBase) createClusterContexts(t *testing.T, needs ClusterNeeds) {
+        fp ( os.Stdout, "MDEBUG in createClusterContexts.\n" )
 	c.createClusterContext(t, needs, false)
 	c.createClusterContext(t, needs, true)
 }
 
 func (c *ClusterTestRunnerBase) createClusterContext(t *testing.T, needs ClusterNeeds, private bool) {
+        fp ( os.Stdout, "MDEBUG in createClusterContext\n" )
 	kubeConfigs := KubeConfigs(t)
 	numClusters := needs.PublicClusters
 	prefix := "public"

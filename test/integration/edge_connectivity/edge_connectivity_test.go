@@ -7,8 +7,27 @@ import (
 	"os"
 	"testing"
 
+	"github.com/skupperproject/skupper/api/types"
 	"github.com/skupperproject/skupper/test/utils/base"
 )
+
+var verbose bool = true
+var red string = "\033[1;31m"
+var green string = "\033[1;32m"
+var cyan string = "\033[1;36m"
+var yellow string = "\033[1;33m"
+var resetColor string = "\033[0m"
+
+type TestCase struct {
+	name               string
+	diagram            []string
+	createOptsPublic   types.SiteConfigSpec
+	createOptsPrivate  types.SiteConfigSpec
+	public_public_cnx  map[int]int
+	private_public_cnx []int
+	direct_count       int
+	indirect_count     int
+}
 
 func TestMain(m *testing.M) {
 	base.ParseFlags()
@@ -16,17 +35,106 @@ func TestMain(m *testing.M) {
 }
 
 func TestExample(t *testing.T) {
-	needs := base.ClusterNeeds{
-		NamespaceId:     "example",
-		PublicClusters:  1,
-		PrivateClusters: 1,
+	// In this test there is always one private namespace,
+	// and it is always an edge.
+	testcases := []TestCase{
+		// Test 1 -------------------------------------------------------
+		{
+			name:    "one-direct",
+			diagram: []string{"edge  -->  interior"},
+			createOptsPublic: types.SiteConfigSpec{
+				SkupperName:       "",
+				IsEdge:            false,
+				EnableController:  true,
+				EnableServiceSync: true,
+				EnableConsole:     false,
+				AuthMode:          types.ConsoleAuthModeUnsecured,
+				User:              "",
+				Password:          "",
+				ClusterLocal:      true,
+				Replicas:          1,
+			},
+			createOptsPrivate: types.SiteConfigSpec{
+				SkupperName:       "",
+				IsEdge:            true,
+				EnableController:  true,
+				EnableServiceSync: true,
+				EnableConsole:     false,
+				AuthMode:          types.ConsoleAuthModeUnsecured,
+				User:              "",
+				Password:          "",
+				ClusterLocal:      true,
+				Replicas:          1,
+			},
+			public_public_cnx: map[int]int{},
+			// The IDs on clusters are 1-based, not 0-based.
+			private_public_cnx: []int{1},
+			direct_count:       1,
+			indirect_count:     0,
+		},
+
+		// Test 2 -------------------------------------------------------
+		{
+			name: "two-direct-V",
+			diagram: []string{"edge  -->  interior-1",
+				"edge  -->  interior-2"},
+			createOptsPublic: types.SiteConfigSpec{
+				SkupperName:       "",
+				IsEdge:            false,
+				EnableController:  true,
+				EnableServiceSync: true,
+				EnableConsole:     false,
+				AuthMode:          types.ConsoleAuthModeUnsecured,
+				User:              "",
+				Password:          "",
+				ClusterLocal:      true,
+				Replicas:          2,
+			},
+			createOptsPrivate: types.SiteConfigSpec{
+				SkupperName:       "",
+				IsEdge:            true,
+				EnableController:  true,
+				EnableServiceSync: true,
+				EnableConsole:     false,
+				AuthMode:          types.ConsoleAuthModeUnsecured,
+				User:              "",
+				Password:          "",
+				ClusterLocal:      true,
+				Replicas:          1,
+			},
+			public_public_cnx: map[int]int{},
+			// The IDs on clusters are 1-based, not 0-based.
+			private_public_cnx: []int{1, 2},
+			direct_count:       2,
+			indirect_count:     0,
+		},
 	}
-	testRunner := &ExampleTestRunner{}
-	testRunner.BuildOrSkip(t, needs, nil)
-	ctx, cancel := context.WithCancel(context.Background())
-	base.HandleInterruptSignal(t, func(t *testing.T) {
-		testRunner.TearDown(ctx)
-		cancel()
-	})
-	testRunner.Run(ctx, t)
+
+	for test_index, testcase := range testcases {
+		current_testcase = &testcase
+		t.Logf("Testing: %s\n", testcase.name)
+		if verbose {
+			fp(os.Stdout, "\n\n%stest %d: %s%s%s\n", yellow, test_index+1, cyan, testcase.name, resetColor)
+			fp(os.Stdout, "%s", cyan)
+			for _, s := range testcase.diagram {
+				fp(os.Stdout, "\t%s\n", s)
+			}
+			fp(os.Stdout, "\n\tdirect: %d   indirect: %d\n", testcase.direct_count, testcase.indirect_count)
+			fp(os.Stdout, "%s\n\n", resetColor)
+		}
+
+		needs := base.ClusterNeeds{
+			NamespaceId:     "example",
+			PublicClusters:  int(testcase.createOptsPublic.Replicas),
+			PrivateClusters: int(testcase.createOptsPrivate.Replicas),
+		}
+		testRunner := &ExampleTestRunner{}
+		testRunner.BuildOrSkip(t, needs, nil)
+		ctx, cancel := context.WithCancel(context.Background())
+		base.HandleInterruptSignal(t, func(t *testing.T) {
+			testRunner.TearDown(ctx)
+			cancel()
+		})
+		testRunner.Run(ctx, &testcase, t)
+	}
 }
