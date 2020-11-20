@@ -40,7 +40,6 @@ func TestExample(t *testing.T) {
         there_can_be_only_1 := int32(1)
 
 	testcases := []TestCase{
-                /*
 		// Test 1 -------------------------------------------------------
 		{
 			name:    "one-direct",
@@ -148,7 +147,6 @@ func TestExample(t *testing.T) {
 			direct_count:       2,
 			indirect_count:     0,
 		},
-                */
 
 		// Test 4 -------------------------------------------------------
 		{
@@ -187,6 +185,42 @@ func TestExample(t *testing.T) {
 			private_public_cnx: []int{1, 2, 3},
 			direct_count:       3,
 			indirect_count:     0,
+		},
+
+		// Test 5 -------------------------------------------------------
+		{
+			name: "one-direct-one-indirect",
+			diagram: []string{"edge  -->  interior-1",
+                                          "interior-1  -->  interior-2"},
+			createOptsPublic: types.SiteConfigSpec{
+				SkupperName:       "",
+				IsEdge:            false,
+				EnableController:  true,
+				EnableServiceSync: true,
+				EnableConsole:     false,
+				AuthMode:          types.ConsoleAuthModeUnsecured,
+				User:              "",
+				Password:          "",
+				ClusterLocal:      true,
+				Replicas:          2,
+			},
+			createOptsPrivate: types.SiteConfigSpec{
+				SkupperName:       "",
+				IsEdge:            true,
+				EnableController:  true,
+				EnableServiceSync: true,
+				EnableConsole:     false,
+				AuthMode:          types.ConsoleAuthModeUnsecured,
+				User:              "",
+				Password:          "",
+				ClusterLocal:      true,
+				Replicas:          there_can_be_only_1,
+			},
+			public_public_cnx: map[int]int{ 1 : 2 },
+			// The IDs on clusters are 1-based, not 0-based.
+			private_public_cnx: []int{1},
+			direct_count:       1,
+			indirect_count:     1,
 		},
 
 	}
