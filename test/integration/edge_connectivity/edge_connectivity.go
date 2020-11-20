@@ -21,8 +21,6 @@ type ExampleTestRunner struct {
 	base.ClusterTestRunnerBase
 }
 
-var current_testcase *TestCase
-
 func (r *ExampleTestRunner) RunTests(testCase *TestCase, ctx context.Context, t *testing.T) (err error) {
 
 	pubCluster, err := r.GetPublicContext(1)
@@ -130,35 +128,38 @@ func (r *ExampleTestRunner) Setup(ctx context.Context, testCase *TestCase, t *te
 	// Make all public-to-public connections. --------------------------
 	for public_1, public_2 := range testCase.public_public_cnx {
 		secretFileName := publicSecrets[public_2-1]
-		public_1_cluster, err := r.GetPrivateContext(public_1)
+		public_1_cluster, err := r.GetPublicContext(public_1)
 		assert.Assert(t, err)
 		connectorCreateOpts := types.ConnectorCreateOptions{SkupperNamespace: public_1_cluster.Namespace,
 			Name: "",
 			Cost: 0,
 		}
+		fp(os.Stdout, "MDEBUG ------------------\n connecting public_1 |%s| to public_2 |%s|\n", public_1_cluster.Namespace, secretFileName)
 		_, err = public_1_cluster.VanClient.ConnectorCreateFromFile(ctx, secretFileName, connectorCreateOpts)
 		assert.Assert(t, err)
-		fp(os.Stdout, "MDEBUG connected public_1 |%s| to public_2 |%s|\n", public_1_cluster.Namespace, secretFileName)
 	}
 
 	// Make all private-to-public connections. -------------------------
 	for _, public := range testCase.private_public_cnx {
+                fp ( os.Stdout, "MDEBUG Making connection from private to public %d\n", public )
 		secretFileName := publicSecrets[public-1]
+                fp ( os.Stdout, "MDEBUG secretFileName is |%s|\n", secretFileName )
 		privateCluster, err := r.GetPrivateContext(1) // There can be only one.
 		assert.Assert(t, err)
 		connectorCreateOpts := types.ConnectorCreateOptions{SkupperNamespace: privateCluster.Namespace,
 			Name: "",
 			Cost: 0,
 		}
+                fp ( os.Stdout, "MDEBUG --------------------\nprivate ns creating link to |%s|\n", secretFileName)
 		_, err = privateCluster.VanClient.ConnectorCreateFromFile(ctx, secretFileName, connectorCreateOpts)
 		assert.Assert(t, err)
 		fp(os.Stdout, "MDEBUG connected private |%s| to public |%s|\n", privateCluster.Namespace, secretFileName)
 	}
 }
 
-func (r *ExampleTestRunner) TearDown(ctx context.Context) {
+func (r *ExampleTestRunner) TearDown(ctx context.Context, testcase * TestCase) {
 
-	createOptsPublic := current_testcase.createOptsPublic
+	createOptsPublic := testcase.createOptsPublic
 	for i := 0; i < int(createOptsPublic.Replicas); i++ {
 		pub, err := r.GetPublicContext(i + 1)
 		if err != nil {
@@ -178,6 +179,7 @@ func (r *ExampleTestRunner) Run(ctx context.Context, testcase *TestCase, t *test
 
 	r.Setup(ctx, testcase, t)
 	err := r.RunTests(testcase, ctx, t)
-	r.TearDown(ctx) // pass in testcase as arg, get rid of current_testcase global.
+	r.TearDown(ctx, testcase) // pass in testcase as arg, get rid of current_testcase global.
 	assert.Assert(t, err)
 }
+

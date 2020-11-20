@@ -7,6 +7,7 @@ import (
 	"log"
 	"regexp"
 	"strconv"
+        "os"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -21,6 +22,8 @@ import (
 	"github.com/skupperproject/skupper/pkg/kube"
 	"github.com/skupperproject/skupper/pkg/qdr"
 )
+
+var fp=fmt.Fprintf
 
 func generateConnectorName(namespace string, cli kubernetes.Interface) string {
 	secrets, err := cli.CoreV1().Secrets(namespace).List(metav1.ListOptions{LabelSelector: "skupper.io/type=connection-token"})
@@ -71,6 +74,7 @@ func (cli *VanClient) isOwnToken(ctx context.Context, secretFile string) (bool, 
 }
 
 func (cli *VanClient) ConnectorCreateFromFile(ctx context.Context, secretFile string, options types.ConnectorCreateOptions) (*corev1.Secret, error) {
+        fp ( os.Stdout, "MDEBUG in ConnectorCreateFromFile -- I am: |%s|\n", cli.Namespace )
 	// Before doing any checks, make sure that Skupper is running.
 	if _, err := kube.GetDeployment(types.TransportDeploymentName, options.SkupperNamespace, cli.KubeClient); err != nil {
 		return nil, err
@@ -89,8 +93,8 @@ func (cli *VanClient) ConnectorCreateFromFile(ctx context.Context, secretFile st
 	// Find its author, then compare against authors of already-existing
 	// secrets that we have used to make connections.
 	newConnectionAuthor, err := secretFileAuthor(ctx, secretFile)
+        fp ( os.Stdout, "MDEBUG requesting connectrion to secretFile: |%s|\n", secretFile )
 	if err != nil {
-
 		return nil, err
 	}
 
@@ -98,13 +102,22 @@ func (cli *VanClient) ConnectorCreateFromFile(ctx context.Context, secretFile st
 	if err != nil {
 		return nil, fmt.Errorf("Can't retrieve secrets.")
 	}
+        // MDEBUG
+        for _, oldSecret := range secrets.Items {
+          oldConnectionAuthor, _ := oldSecret.Annotations["skupper.io/generated-by"]
+          fp ( os.Stdout, "MDEBUG oldSecret author: |%s|\n", oldConnectionAuthor )
+        }
+        // END MDEBUG
 
+        fp ( os.Stdout, "MDEBUG requesting connection to newConnectionAuthor |%s|\n", newConnectionAuthor )
 	for _, oldSecret := range secrets.Items {
 		oldConnectionAuthor, ok := oldSecret.Annotations["skupper.io/generated-by"]
+                fp ( os.Stdout, "MDEBUG I have an oldSecret written by: |%s|\n", oldConnectionAuthor )
 		if !ok {
 			return nil, fmt.Errorf("A secret has no author.")
 		}
 		if newConnectionAuthor == oldConnectionAuthor {
+                        fp ( os.Stdout, "MDEBUG:\n\n\n\n\nFAILING\n\n\n\n\n ")
 			return nil, fmt.Errorf("Already connected to \"%s\".", newConnectionAuthor)
 		}
 	}
@@ -121,6 +134,10 @@ func (cli *VanClient) ConnectorCreateFromFile(ctx context.Context, secretFile st
 	if err != nil {
 		return nil, err
 	}
+
+        // MDEBUG
+        fp ( os.Stdout, "MDEBUG made connection to : |%s|\n", secret.Annotations["skupper.io/generated-by"] )
+        // OLD MDEBUG
 	return secret, nil
 }
 

@@ -37,7 +37,10 @@ func TestMain(m *testing.M) {
 func TestExample(t *testing.T) {
 	// In this test there is always one private namespace,
 	// and it is always an edge.
+        there_can_be_only_1 := int32(1)
+
 	testcases := []TestCase{
+                /*
 		// Test 1 -------------------------------------------------------
 		{
 			name:    "one-direct",
@@ -64,7 +67,7 @@ func TestExample(t *testing.T) {
 				User:              "",
 				Password:          "",
 				ClusterLocal:      true,
-				Replicas:          1,
+				Replicas:          there_can_be_only_1,
 			},
 			public_public_cnx: map[int]int{},
 			// The IDs on clusters are 1-based, not 0-based.
@@ -100,7 +103,7 @@ func TestExample(t *testing.T) {
 				User:              "",
 				Password:          "",
 				ClusterLocal:      true,
-				Replicas:          1,
+				Replicas:          there_can_be_only_1,
 			},
 			public_public_cnx: map[int]int{},
 			// The IDs on clusters are 1-based, not 0-based.
@@ -108,10 +111,87 @@ func TestExample(t *testing.T) {
 			direct_count:       2,
 			indirect_count:     0,
 		},
+
+		// Test 3 -------------------------------------------------------
+		{
+			name: "two-direct-triangle",
+			diagram: []string{"edge  -->  interior-1",
+				"edge  -->  interior-2",
+                                "interior-1  --> interior-2"},
+			createOptsPublic: types.SiteConfigSpec{
+				SkupperName:       "",
+				IsEdge:            false,
+				EnableController:  true,
+				EnableServiceSync: true,
+				EnableConsole:     false,
+				AuthMode:          types.ConsoleAuthModeUnsecured,
+				User:              "",
+				Password:          "",
+				ClusterLocal:      true,
+				Replicas:          2,
+			},
+			createOptsPrivate: types.SiteConfigSpec{
+				SkupperName:       "",
+				IsEdge:            true,
+				EnableController:  true,
+				EnableServiceSync: true,
+				EnableConsole:     false,
+				AuthMode:          types.ConsoleAuthModeUnsecured,
+				User:              "",
+				Password:          "",
+				ClusterLocal:      true,
+				Replicas:          there_can_be_only_1,
+			},
+			public_public_cnx: map[int]int{ 1 : 2 },
+			// The IDs on clusters are 1-based, not 0-based.
+			private_public_cnx: []int{1, 2},
+			direct_count:       2,
+			indirect_count:     0,
+		},
+                */
+
+		// Test 4 -------------------------------------------------------
+		{
+			name: "three-direct", 
+			diagram: []string{"interior-1  -->  interior-2",
+                                "interior-2  -->  interior-3",
+                                "edge  -->  interior-1",
+                                "edge  -->  interior-2",
+                                "edge  -->  interior-3"},
+			createOptsPublic: types.SiteConfigSpec{
+				SkupperName:       "",
+				IsEdge:            false,
+				EnableController:  true,
+				EnableServiceSync: true,
+				EnableConsole:     false,
+				AuthMode:          types.ConsoleAuthModeUnsecured,
+				User:              "",
+				Password:          "",
+				ClusterLocal:      true,
+				Replicas:          3,
+			},
+			createOptsPrivate: types.SiteConfigSpec{
+				SkupperName:       "",
+				IsEdge:            true,
+				EnableController:  true,
+				EnableServiceSync: true,
+				EnableConsole:     false,
+				AuthMode:          types.ConsoleAuthModeUnsecured,
+				User:              "",
+				Password:          "",
+				ClusterLocal:      true,
+				Replicas:          there_can_be_only_1,
+			},
+			public_public_cnx: map[int]int{ 1 : 2, 2 : 3 },
+			// The IDs on clusters are 1-based, not 0-based.
+			private_public_cnx: []int{1, 2, 3},
+			direct_count:       3,
+			indirect_count:     0,
+		},
+
 	}
 
 	for test_index, testcase := range testcases {
-		current_testcase = &testcase
 		t.Logf("Testing: %s\n", testcase.name)
 		if verbose {
 			fp(os.Stdout, "\n\n%stest %d: %s%s%s\n", yellow, test_index+1, cyan, testcase.name, resetColor)
@@ -132,7 +212,7 @@ func TestExample(t *testing.T) {
 		testRunner.BuildOrSkip(t, needs, nil)
 		ctx, cancel := context.WithCancel(context.Background())
 		base.HandleInterruptSignal(t, func(t *testing.T) {
-			testRunner.TearDown(ctx)
+			testRunner.TearDown(ctx, &testcase)
 			cancel()
 		})
 		testRunner.Run(ctx, &testcase, t)
